@@ -9,6 +9,8 @@ namespace Ui {
 class MainWindow;
 }
 
+class LRTThread;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -29,10 +31,14 @@ private:
     std::shared_ptr<QGraphicsScene>  m_screen{nullptr};
     QString m_path_save;
 
+    std::shared_ptr<QImage> m_image;
+
+    std::shared_ptr<LRTThread> m_lrt_thread;
+
 private:
     void setup_gs();
 
-    void convert_rgb_to_bw(QImage& input_image);
+    void convert_rgb_to_bw(std::shared_ptr<QImage>& input_image);
 };
 
 #endif // MAINWINDOW_HPP

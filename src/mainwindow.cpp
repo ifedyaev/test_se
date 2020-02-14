@@ -2,6 +2,9 @@
 #include "ui_mainwindow.h"
 #include <QFileDialog>
 #include <QDebug>
+#include <iostream>
+#include "lrt_thread.hpp"
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -30,22 +33,22 @@ void MainWindow::setup_gs()
     return;
 }
 
-void MainWindow::convert_rgb_to_bw(QImage& input_image)
+void MainWindow::convert_rgb_to_bw(std::shared_ptr<QImage>& input_image)
 {
     /* check gray */
-    if(input_image.isGrayscale()){ return; }
+    if(input_image->isGrayscale()){ return; }
 
     /* convert to gray */
-    const int32_t n_col = input_image.width();
-    const int32_t n_row = input_image.height();
+    const int32_t n_col = input_image->width();
+    const int32_t n_row = input_image->height();
 
     int32_t c,r;
     /* loop convert rgb -> gray */
     for(c = 0; c < n_col; ++c){
         for(r = 0; r < n_row; ++r){
-            const QRgb cur_rgb = input_image.pixel(c,r);
+            const QRgb cur_rgb = input_image->pixel(c,r);
             const int32_t gray = qGray(cur_rgb);
-            input_image.setPixel(c,r,qRgb(gray,gray,gray));
+            input_image->setPixel(c,r,qRgb(gray,gray,gray));
         }/* end row */
     }/* end col */
     return;
@@ -61,14 +64,18 @@ void MainWindow::on_m_push_button_load_image_clicked()
 
     if (file_name.size() == 0){ return; }
 
-    QImage input_image(file_name);
+    m_image = std::make_shared<QImage>(file_name);
 
-    convert_rgb_to_bw(/* input_image = */input_image);
+    convert_rgb_to_bw(/* input_image = */m_image);
+
+    qDebug() << "width  = " << m_image->width();
+    qDebug() << "heigth = " << m_image->height();
 
     m_screen->clear();
-    m_screen->addPixmap(QPixmap::fromImage(input_image));
+    const QImage& plot_image = *m_image.get();
+    m_screen->addPixmap(QPixmap::fromImage(plot_image));
 
-    /* mute button */
+    /* unmute button */
     constexpr bool is_enabled = true;
     ui->m_push_button_lrt->setEnabled(is_enabled);
     return;
@@ -76,7 +83,9 @@ void MainWindow::on_m_push_button_load_image_clicked()
 
 void MainWindow::on_m_push_button_lrt_clicked()
 {
-    /* mute button */
+    m_lrt_thread = std::make_shared<LRTThread>(m_image);
+    m_lrt_thread->start();
+    /* unmute button */
     constexpr bool is_enabled = true;
     ui->m_push_button_export_image->setEnabled(is_enabled);
     return;
