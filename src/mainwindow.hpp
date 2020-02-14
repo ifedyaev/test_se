@@ -26,12 +26,16 @@ private slots:
 
     void on_m_push_button_export_image_clicked();
 
+    void end_of_job_radon(const std::shared_ptr<QImage> data);
+
 private:
     Ui::MainWindow* ui;
     std::shared_ptr<QGraphicsScene>  m_screen{nullptr};
     QString m_path_save;
 
-    std::shared_ptr<QImage> m_image;
+    std::shared_ptr<QImage> m_image{nullptr};
+
+    std::shared_ptr<QImage> m_image_output{nullptr};
 
     std::shared_ptr<LRTThread> m_lrt_thread;
 

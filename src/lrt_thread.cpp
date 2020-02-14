@@ -2,31 +2,36 @@
 #include <QImage>
 #include <cmath>
 #include <math.h>
+#include <QDir>
 #include <QDebug>
+#include <iostream>
 
 static constexpr float C_ANG_TO_RAD = M_PI/180.0f;
 static constexpr float C_EPS = std::numeric_limits<float>::epsilon()*10;
+static constexpr QImage::Format C_FRGB32 = QImage::Format_RGB32;
 
 LRTThread::LRTThread(const std::shared_ptr<QImage>& image) : QThread()
 {
-    qDebug() << "create!";
     m_image_input = image;
     setup_array_k();
     setup_array_axis_xy();
+    /* init bound */
+    m_lb_y = 0.0f;
+    m_ub_y = m_image_input->height() - 1;
 }
 
 void LRTThread::run()
 {
     m_is_run = true;
-    qDebug() << "start!";
-
     const int32_t n_y = m_image_input->height();
     const int32_t n_x = m_image_input->width();
     const int32_t n_k = static_cast<int32_t>(m_arr_k.size());
 
     const int32_t half_size_w = static_cast<int32_t>( n_x/2.0f + 0.5f );
 
-    m_image_output = std::make_shared<QImage>(/* width = */n_k,/* height = */n_y,/* format = */QImage::Format_RGB32);
+    m_image_output = std::make_shared<QImage>(/* width  = */n_k,
+                                              /* height = */n_y,
+                                              /* format = */C_FRGB32);
 
     /* ============= create matrix ===========
      * -> fill
@@ -41,12 +46,39 @@ void LRTThread::run()
     int32_t iy; /* loop index height */
     int32_t ik; /* loop index angle -> k line */
 
+    /* === middle matrix */
+    int32_t ik_lim = -1;
+    for(ik = 0; ik < n_k; ++ik){
+        if(m_arr_k[ik] == 0.0f){
+            ik_lim = ik;
+        }
+    }
+
+    if(ik_lim != -1 and n_x%2 != 0){
+        ik = ik_lim;
+        const int32_t mid_x = n_x/2;
+        float mid_sum{0.0f};
+        for(iy = 0; iy < n_y; ++iy){
+            mid_sum += static_cast<float>(m_image_input->pixelColor(mid_x,iy).red());
+        }
+        /* fill */
+        for(iy = 0; iy < n_y; ++iy){
+            matrix[ik][iy] = mid_sum;
+        }
+    }
+    else{
+        ik_lim = -1;
+    }
+
+    const float step_proc = 100.0f/(n_y - 1);
     /* loop Oy -> height */
     for(iy = 0; iy < n_y; ++iy){
-        qDebug() << "-> " << iy;
+        emit updata_progress_bar(step_proc*iy);
+        /* set progress bar */
         const float cur_b = m_arr_y[iy]; /* b */
         /* loop angle -> k*/
         for(ik = 0; ik < n_k; ++ik){
+            if(ik == ik_lim){ continue; }
             const float cur_k = m_arr_k[ik];
             /* left */
             compute_left_matrix(/* cur_k = */cur_k,/* cur_b = */cur_b,
@@ -62,13 +94,14 @@ void LRTThread::run()
             if(not m_is_run) { break; }
         }/* end loop angle */
         if(not m_is_run) { break; }
+
     }/* end loop height*/
 
     if(m_is_run){
         set_gray_image_by_data(/* buffer = */buffer,/* matrix = */matrix,
                                /* n_k = */n_k,/* n_y = */n_y);
+        emit end_of_job(m_image_output);
     }
-    qDebug() << "end!";
     m_is_run = false;
     return;
 }
@@ -124,9 +157,16 @@ float LRTThread::inperpolation_y(const float x_out,const int32_t idx_x) const
     /* left interp data */
     const float x_lhs = static_cast<float>(static_cast<int32_t>(x_out));
     const float y_lhs = static_cast<float>(m_image_input->pixelColor(idx_x,x_lhs).red());
-
     /* right intepr data */
-    const float x_rhs = static_cast<float>(static_cast<int32_t>(x_out + 0.5f));
+
+    const int32_t fx_rhs = x_out + 1.0f;
+    float x_rhs;
+    if(fx_rhs - m_ub_y > C_EPS){
+        x_rhs = static_cast<float>(static_cast<int32_t>(fx_rhs - 2.0f));
+    }
+    else{
+        x_rhs = static_cast<float>(static_cast<int32_t>(fx_rhs));
+    }
     const float y_rhs = static_cast<float>(m_image_input->pixelColor(idx_x,x_rhs).red());
 
     const float y_out = line_interp(/* x_lhs = */x_lhs,/* y_lhs = */y_lhs,
@@ -189,7 +229,11 @@ void LRTThread::set_gray_image_by_data(const std::vector<float> &buffer, const s
     for(ik = 0; ik < n_k; ++ik){
         /* loop width */
         for(iy = 0; iy < n_y; ++iy){
-            const int32_t gray = static_cast<int32_t>(matrix[ik][iy]*scale_matrix);
+            const float value = matrix[ik][iy];
+            int32_t gray{0};
+            if(value != 0.0f){
+                gray = static_cast<int32_t>(value*scale_matrix);
+            }
             m_image_output->setPixelColor(ik,iy,qRgb(gray,gray,gray));
         }/* end loop width*/
     }/* end loop heigth */

@@ -68,9 +68,6 @@ void MainWindow::on_m_push_button_load_image_clicked()
 
     convert_rgb_to_bw(/* input_image = */m_image);
 
-    qDebug() << "width  = " << m_image->width();
-    qDebug() << "heigth = " << m_image->height();
-
     m_screen->clear();
     const QImage& plot_image = *m_image.get();
     m_screen->addPixmap(QPixmap::fromImage(plot_image));
@@ -84,10 +81,16 @@ void MainWindow::on_m_push_button_load_image_clicked()
 void MainWindow::on_m_push_button_lrt_clicked()
 {
     m_lrt_thread = std::make_shared<LRTThread>(m_image);
+    /* connect progerss bar */
+    connect(m_lrt_thread.get(),SIGNAL(updata_progress_bar(int)),
+            ui->m_progress_bar,SLOT(setValue(int)));
+
+    /* connect end of job */
+    qRegisterMetaType < std::shared_ptr<QImage> >("std::shared_ptr<QImage>");
+    connect(m_lrt_thread.get(),SIGNAL(end_of_job(const std::shared_ptr<QImage>)),
+            this,SLOT(end_of_job_radon(const std::shared_ptr<QImage>)));
+
     m_lrt_thread->start();
-    /* unmute button */
-    constexpr bool is_enabled = true;
-    ui->m_push_button_export_image->setEnabled(is_enabled);
     return;
 }
 
@@ -100,5 +103,22 @@ void MainWindow::on_m_push_button_export_image_clicked()
                                                            );
     m_path_save = QFileInfo(file_name).absolutePath();/* save path */
     if(file_name.size() == 0){ return; }
+
+    if(not m_image_output->isNull()){
+        m_image_output->save(file_name,"PNG",85);
+    }
+    return;
+}
+
+void MainWindow::end_of_job_radon(const std::shared_ptr<QImage> data)
+{
+    m_image_output = data;
+    /* plot */
+    m_screen->clear();
+    const QImage& plot_image = *m_image_output.get();
+    m_screen->addPixmap(QPixmap::fromImage(plot_image));
+    /* unmute button */
+    constexpr bool is_enabled = true;
+    ui->m_push_button_export_image->setEnabled(is_enabled);
     return;
 }
