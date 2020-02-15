@@ -5,6 +5,8 @@
 #include <iostream>
 #include "lrt_thread.hpp"
 
+static const char C_FORMAT[] = "PNG";
+static constexpr int32_t C_QUALITY = 85;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -13,10 +15,12 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
 
     setup_gs();
+
     /* mute button */
     constexpr bool is_enabled = false;
     ui->m_push_button_lrt->setEnabled(is_enabled);
     ui->m_push_button_export_image->setEnabled(is_enabled);
+
     /* path */
     m_path_save = QDir::homePath();
 }
@@ -61,13 +65,13 @@ void MainWindow::on_m_push_button_load_image_clicked()
                                                            m_path_save,
                                                            tr("Image (*.png)"));
     m_path_save = QFileInfo(file_name).absolutePath();/* save path */
-
     if (file_name.size() == 0){ return; }
 
+    /* create Image by path */
     m_image = std::make_shared<QImage>(file_name);
-
     convert_rgb_to_bw(/* input_image = */m_image);
 
+    /* plot */
     m_screen->clear();
     const QImage& plot_image = *m_image.get();
     m_screen->addPixmap(QPixmap::fromImage(plot_image));
@@ -80,7 +84,9 @@ void MainWindow::on_m_push_button_load_image_clicked()
 
 void MainWindow::on_m_push_button_lrt_clicked()
 {
+    /* create thread Line Radon Transform */
     m_lrt_thread = std::make_shared<LRTThread>(m_image);
+
     /* connect progerss bar */
     connect(m_lrt_thread.get(),SIGNAL(updata_progress_bar(int)),
             ui->m_progress_bar,SLOT(setValue(int)));
@@ -105,18 +111,22 @@ void MainWindow::on_m_push_button_export_image_clicked()
     if(file_name.size() == 0){ return; }
 
     if(not m_image_output->isNull()){
-        m_image_output->save(file_name,"PNG",85);
+        m_image_output->save(file_name,C_FORMAT,C_QUALITY);
     }
     return;
 }
 
 void MainWindow::end_of_job_radon(const std::shared_ptr<QImage> data)
 {
+    /* set data */
+    m_image = data;
     m_image_output = data;
+
     /* plot */
     m_screen->clear();
     const QImage& plot_image = *m_image_output.get();
     m_screen->addPixmap(QPixmap::fromImage(plot_image));
+
     /* unmute button */
     constexpr bool is_enabled = true;
     ui->m_push_button_export_image->setEnabled(is_enabled);

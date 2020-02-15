@@ -1,5 +1,9 @@
 #ifndef MAINWINDOW_HPP
 #define MAINWINDOW_HPP
+/***********************************
+ *    GIU Line Radon Transform
+ ***********************************
+ */
 
 #include <QMainWindow>
 #include <QGraphicsScene>
@@ -30,18 +34,26 @@ private slots:
 
 private:
     Ui::MainWindow* ui;
-    std::shared_ptr<QGraphicsScene>  m_screen{nullptr};
-    QString m_path_save;
 
-    std::shared_ptr<QImage> m_image{nullptr};
+    QString m_path_save; /* save path open file dialog */
 
-    std::shared_ptr<QImage> m_image_output{nullptr};
+    std::shared_ptr<QGraphicsScene> m_screen{nullptr}; /* gs -> gw */
 
-    std::shared_ptr<LRTThread> m_lrt_thread;
+    std::shared_ptr<QImage> m_image{nullptr};           /* input image */
+    std::shared_ptr<QImage> m_image_output{nullptr};    /* output LRT imag */
+
+    std::shared_ptr<LRTThread> m_lrt_thread{nullptr};   /* Line Radon Transform Thread */
 
 private:
+    /**
+     * @brief setup_gs Graphics Scene
+     */
     void setup_gs();
 
+    /**
+     * @brief convert_rgb_to_bw Conver input Image -> to white-black Image
+     * @param input_image [input|output] - image convert
+     */
     void convert_rgb_to_bw(std::shared_ptr<QImage>& input_image);
 };
 

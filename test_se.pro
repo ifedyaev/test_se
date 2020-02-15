@@ -11,6 +11,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = test_se
 TEMPLATE = app
 
+CONFIG += c++14
+
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
 # depend on your compiler). Please consult the documentation of the
@@ -26,11 +28,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         main.cpp \
         src/mainwindow.cpp \
-    src/lrt_thread.cpp
+        src/lrt_thread.cpp
 
 HEADERS += \
         src/mainwindow.hpp \
-    src/lrt_thread.hpp
+        src/lrt_thread.hpp \
+        src/matrix.hpp
 
 FORMS += \
         ui/mainwindow.ui

@@ -1,8 +1,16 @@
 #ifndef LRT_THREAD_HPP
 #define LRT_THREAD_HPP
+/***********************************************
+ *               class LRTThread
+ * The class was created to perform
+ * a Linear Radon Transformation in
+ * a separate Thread
+ ***********************************************
+ */
 #include <QThread>
 #include <memory>
 
+template<typename T> class Matrix;
 
 class LRTThread : public QThread
 {
@@ -15,8 +23,7 @@ private:
     void run() override;
 
 private:
-    /* flag start-stop */
-    bool m_is_run{false};
+    bool m_is_run{false};/* flag start-stop */
 
     std::shared_ptr< QImage > m_image_input{nullptr};   /* input image */
     std::shared_ptr< QImage > m_image_output{nullptr};  /* output image */
@@ -27,8 +34,8 @@ private:
     std::vector<float> m_arr_x;
     std::vector<float> m_arr_y;
     /* border */
-    float m_ub_y{0.0f};
-    float m_lb_y{0.0f};
+    float m_ub_y{0.0f}; /* upper bound */
+    float m_lb_y{0.0f}; /* lower bound */
 
     /**
      * @brief setup_array_k angle -> to k == tan
@@ -40,28 +47,66 @@ private:
      */
     void setup_array_axis_xy();
 
-    float inperpolation_y(const float x_out, const int32_t idx_x) const;
-
-    void compute_left_matrix(const float cur_k, const float cur_b,
-                             const int32_t ik, const int32_t iy,
-                             const int32_t half_size_w,
-                             std::vector<float*>& matrix);
-
-    void compute_right_matrix(const float cur_k, const float cur_b,
-                              const int32_t ik, const int32_t iy,
-                              const int32_t half_size_w, const int32_t n_x,
-                              std::vector<float *> &matrix);
-
-    void set_gray_image_by_data(const std::vector<float>& buffer, const std::vector<float*>& matrix,const int32_t n_k,const int32_t n_y);
-
-    void init_matrix(std::vector<float>& buffer,std::vector<float*>& matrix, const int32_t n_k, const int32_t n_y);
-
     /**
-     * @brief find_imax find index maximum
-     * @param data
+     * @brief inperpolation_row compute all point interpolation and do line interplation
+     * @param row_out   row matrix
+     * @param col       column matrix
      * @return
      */
-    int32_t find_imax(const std::vector<float>& data);
+    float inperpolation_y(const float row_out,const int32_t col) const;
+
+    /**
+     * @brief compute_left_matrix compute left matrix
+     * relative to the center of the coordinate system
+     * -> if one compyte Y out of coordinate matrix ( break compute )
+     * @param cur_k     k line
+     * @param cur_b     b line
+     * @param col       column matrix
+     * @param row       row matrix
+     * @param half_n_x  half size x coordinate
+     * @param matrix       matrix sum
+     * @param count_matrix matrix count point in one [row][col] sum
+     */
+    void compute_left_matrix(const float cur_k, const float cur_b,
+                             const int32_t col, const int32_t row,
+                             const int32_t half_n_x,
+                             Matrix<float>& matrix,
+                             Matrix<int32_t>& count_matrix);
+
+    /**
+     * @brief compute_right_matrix Compute right matrix
+     * relative to the center of the coordinate system
+     * -> if one compyte Y out of coordinate matrix ( break compute )
+     * @param cur_k     k line
+     * @param cur_b     b line
+     * @param col       column matrix
+     * @param row       row matrix
+     * @param half_n_x  half size x coordinate
+     * @param n_x       size x
+     * @param matrix       matrix sum
+     * @param count_matrix matrix count point in one [row][col] sum
+     */
+    void compute_right_matrix(const float cur_k, const float cur_b,
+                              const int32_t col, const int32_t row,
+                              const int32_t half_n_x, const int32_t n_x,
+                              Matrix<float>& matrix,
+                              Matrix<int32_t>& count_matrix);
+
+    /**
+     * @brief set_gray_image_by_data
+     * @param matrix       matrix sum
+     * @param count_matrix matrix count point in one [row][col] sum
+     * @param n_col     size column
+     * @param n_row     size row
+     */
+    void set_gray_image_by_data(Matrix<float>& matrix,
+                                Matrix<int32_t>& count_matrix,
+                                const int32_t n_col,const int32_t n_row);
+
+    int32_t compute_k_zeros(Matrix<float>& matrix,
+                            Matrix<int32_t>& count_matrix,
+                            const int32_t n_col,const int32_t n_row,
+                            const int32_t n_x);
 
     /**
      * @brief line_interp line interp
