@@ -37,6 +37,8 @@ private:
 
     QString m_path_save; /* save path open file dialog */
 
+    bool m_is_compute{false};
+
     std::shared_ptr<QGraphicsScene> m_screen{nullptr}; /* gs -> gw */
 
     std::shared_ptr<QImage> m_image{nullptr};           /* input image */

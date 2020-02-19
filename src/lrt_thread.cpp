@@ -130,7 +130,7 @@ void LRTThread::setup_array_axis_xy()
     const float half_height = (height - 1)/2.0f;
     /* fill height coord -> Oy */
     for(i = 0; i < height; ++i){
-        m_arr_y[i] = -half_height + i;
+        m_arr_y[i] = half_height - i;
     }
 
     /* init bound */

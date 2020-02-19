@@ -39,6 +39,8 @@ void MainWindow::setup_gs()
 
 void MainWindow::convert_rgb_to_bw(std::shared_ptr<QImage>& input_image)
 {
+    /* convert image to RGB32 */
+    input_image = std::make_shared<QImage>(input_image->convertToFormat(QImage::Format_RGB32));
     /* check gray */
     if(input_image->isGrayscale()){ return; }
 
@@ -60,6 +62,9 @@ void MainWindow::convert_rgb_to_bw(std::shared_ptr<QImage>& input_image)
 
 void MainWindow::on_m_push_button_load_image_clicked()
 {
+    /* check if compute */
+    if(m_is_compute){ return; }
+
     const QString file_name = QFileDialog::getOpenFileName(this,
                                                            tr("Select Image"),
                                                            m_path_save,
@@ -79,24 +84,29 @@ void MainWindow::on_m_push_button_load_image_clicked()
     /* unmute button */
     constexpr bool is_enabled = true;
     ui->m_push_button_lrt->setEnabled(is_enabled);
+    /* mute */
+    ui->m_push_button_export_image->setEnabled(not is_enabled);
     return;
 }
 
 void MainWindow::on_m_push_button_lrt_clicked()
 {
-    /* create thread Line Radon Transform */
-    m_lrt_thread = std::make_shared<LRTThread>(m_image);
+    if(not m_lrt_thread){
+        m_is_compute = true;
+        /* create thread Line Radon Transform */
+        m_lrt_thread = std::make_shared<LRTThread>(m_image);
 
-    /* connect progerss bar */
-    connect(m_lrt_thread.get(),SIGNAL(updata_progress_bar(int)),
-            ui->m_progress_bar,SLOT(setValue(int)));
+        /* connect progerss bar */
+        connect(m_lrt_thread.get(),SIGNAL(updata_progress_bar(int)),
+                ui->m_progress_bar,SLOT(setValue(int)));
 
-    /* connect end of job */
-    qRegisterMetaType < std::shared_ptr<QImage> >("std::shared_ptr<QImage>");
-    connect(m_lrt_thread.get(),SIGNAL(end_of_job(const std::shared_ptr<QImage>)),
-            this,SLOT(end_of_job_radon(const std::shared_ptr<QImage>)));
+        /* connect end of job */
+        qRegisterMetaType < std::shared_ptr<QImage> >("std::shared_ptr<QImage>");
+        connect(m_lrt_thread.get(),SIGNAL(end_of_job(const std::shared_ptr<QImage>)),
+                this,SLOT(end_of_job_radon(const std::shared_ptr<QImage>)));
 
-    m_lrt_thread->start();
+        m_lrt_thread->start();
+    }
     return;
 }
 
@@ -118,6 +128,7 @@ void MainWindow::on_m_push_button_export_image_clicked()
 
 void MainWindow::end_of_job_radon(const std::shared_ptr<QImage> data)
 {
+    m_is_compute = false;
     /* set data */
     m_image = data;
     m_image_output = data;
@@ -130,5 +141,7 @@ void MainWindow::end_of_job_radon(const std::shared_ptr<QImage> data)
     /* unmute button */
     constexpr bool is_enabled = true;
     ui->m_push_button_export_image->setEnabled(is_enabled);
+    /* empty thread */
+    m_lrt_thread = nullptr;
     return;
 }
